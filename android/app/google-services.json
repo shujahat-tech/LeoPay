@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "572279031586",
+    "project_id": "leopay-2805b",
+    "storage_bucket": "leopay-2805b.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:572279031586:android:83950eff7f8bfea4b2477b",
+        "android_client_info": {
+          "package_name": "com.example.leopay"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB-acO7DcwDxOWKUDyEV3PStSOTqqkUwxk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

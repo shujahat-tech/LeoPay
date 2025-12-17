@@ -1,74 +1,195 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
+
+import '../../routes/app_routes.dart';
+import '../../services/auth_service.dart';
+import '../../services/wallet_service.dart';
+import '../widgets/menu_card.dart';
+import '../widgets/wallet_card.dart';
+import '../../models/transaction_model.dart';
+import '../../models/wallet_model.dart';
 
 class DashboardScreen extends StatelessWidget {
   const DashboardScreen({super.key});
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Dashboard'),
-        backgroundColor: Colors.cyan,
-        actions: [IconButton(onPressed: () {}, icon: const Icon(Icons.notifications))],
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          children: [
-            Card(
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-              color: Colors.cyan[50],
-              child: Padding(
-                padding: const EdgeInsets.all(20.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: const [
-                    Text('Current Balance', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                    SizedBox(height: 10),
-                    Text('+1,500.00 EUR', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
-                    Text('-200.00 EUR', style: TextStyle(fontSize: 18, color: Colors.red)),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 20),
-            Expanded(
-              child: GridView.count(
-                crossAxisCount: 2,
-                crossAxisSpacing: 10,
-                mainAxisSpacing: 10,
-                children: [
-                  _featureButton('Wallet', Icons.account_balance_wallet),
-                  _featureButton('Chat', Icons.chat),
-                  _featureButton('Profile', Icons.person),
-                  _featureButton('Fees', Icons.payment),
-                  _featureButton('Timetable', Icons.calendar_today),
-                  _featureButton('Cards', Icons.credit_card),
-                  _featureButton('Certificates', Icons.document_scanner),
-                  _featureButton('Notifications', Icons.notifications),
-                ],
-              ),
-            )
-          ],
-        ),
-      ),
-    );
+  String _formatCurrency(double amount) {
+    final format = NumberFormat.currency(symbol: '€', decimalDigits: 2);
+    return format.format(amount);
   }
 
-  Widget _featureButton(String title, IconData icon) {
-    return ElevatedButton(
-      onPressed: () {},
-      style: ElevatedButton.styleFrom(
-        backgroundColor: Colors.cyan[100],
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(icon, size: 40, color: Colors.cyan[900]),
-          const SizedBox(height: 10),
-          Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+  @override
+  Widget build(BuildContext context) {
+    final user = AuthService.instance.currentUser;
+
+    if (user == null) {
+      return const Scaffold(
+        body: Center(child: Text('Please sign in again')),
+      );
+    }
+
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Welcome back!'),
+        actions: [
+          IconButton(
+            tooltip: 'Send money',
+            onPressed: () =>
+                Navigator.pushNamed(context, AppRoutes.sendMoney),
+            icon: const Icon(Icons.send_outlined),
+            color: const Color(0xFF21C7C7),
+          ),
+          IconButton(
+            tooltip: 'Sign out',
+            onPressed: () async {
+              await AuthService.instance.signOut();
+              if (context.mounted) {
+                Navigator.of(context).pushNamedAndRemoveUntil(
+                  AppRoutes.login,
+                  (route) => false,
+                );
+              }
+            },
+            icon: const Icon(Icons.logout),
+            color: const Color(0xFF0D2B45),
+          ),
+          const SizedBox(width: 8),
         ],
+      ),
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              StreamBuilder<WalletModel>(
+                stream: WalletService.instance.walletStream(user.uid),
+                builder: (context, snapshot) {
+                  final wallet =
+                      snapshot.data ?? WalletModel.initial();
+
+                  return WalletCard(
+                    balance: _formatCurrency(wallet.balance),
+                    income: _formatCurrency(wallet.income),
+                    spent: _formatCurrency(wallet.spent),
+                  );
+                },
+              ),
+              const SizedBox(height: 20),
+              const Text(
+                'OVERVIEW',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 0.3,
+                ),
+              ),
+              const SizedBox(height: 12),
+              GridView.count(
+                crossAxisCount: 2,
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                crossAxisSpacing: 16,
+                mainAxisSpacing: 16,
+                childAspectRatio: 1.2,
+                children: [
+                  MenuCard(
+                    title: 'TRANSFER',
+                    icon: Icons.swap_horiz,
+                    background: const Color(0xFF0D2B45),
+                    onTap: () =>
+                        Navigator.pushNamed(context, AppRoutes.sendMoney),
+                  ),
+                  const MenuCard(
+                    title: 'REQUEST',
+                    icon: Icons.request_page_outlined,
+                  ),
+                  const MenuCard(
+                    title: 'EXCHANGE',
+                    icon: Icons.currency_exchange,
+                  ),
+                  const MenuCard(
+                    title: 'CREDIT',
+                    icon: Icons.credit_card,
+                    background: Color(0xFF21C7C7),
+                    foreground: Colors.white,
+                  ),
+                  const MenuCard(
+                    title: 'SECURITY',
+                    icon: Icons.security,
+                  ),
+                  const MenuCard(
+                    title: 'MORE',
+                    icon: Icons.more_horiz,
+                  ),
+                ],
+              ),
+              const SizedBox(height: 24),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: const [
+                  Text(
+                    'LAST TRANSACTIONS',
+                    style: TextStyle(
+                        fontWeight: FontWeight.bold, letterSpacing: 0.3),
+                  ),
+                  Icon(Icons.history, color: Color(0xFF0D2B45)),
+                ],
+              ),
+              const SizedBox(height: 12),
+              StreamBuilder<List<TransactionModel>>(
+                stream:
+                    WalletService.instance.recentTransactions(user.uid),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState ==
+                      ConnectionState.waiting) {
+                    return const Center(
+                        child: CircularProgressIndicator());
+                  }
+                  final transactions = snapshot.data ?? [];
+                  if (transactions.isEmpty) {
+                    return const Text(
+                        'No transactions yet. Send or add funds to see history.');
+                  }
+                  return Column(
+                    children: transactions
+                        .map((tx) => ListTile(
+                              contentPadding:
+                                  const EdgeInsets.symmetric(vertical: 6),
+                              leading: CircleAvatar(
+                                backgroundColor: tx.type ==
+                                        TransactionType.income
+                                    ? const Color(0xFF21C7C7)
+                                    : const Color(0xFF0D2B45),
+                                child: Icon(
+                                  tx.type == TransactionType.income
+                                      ? Icons.arrow_downward
+                                      : Icons.arrow_upward,
+                                  color: Colors.white,
+                                ),
+                              ),
+                              title: Text(tx.recipientName ??
+                                  (tx.type == TransactionType.income
+                                      ? 'Income'
+                                      : 'Payment')),
+                              subtitle: Text(
+                                  DateFormat.yMMMEd().add_Hm().format(
+                                      tx.createdAt.toLocal())),
+                              trailing: Text(
+                                '${tx.type == TransactionType.expense ? '-' : '+'}${_formatCurrency(tx.amount)}',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: tx.type == TransactionType.expense
+                                      ? Colors.redAccent
+                                      : Colors.green,
+                                ),
+                              ),
+                            ))
+                        .toList(),
+                  );
+                },
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
